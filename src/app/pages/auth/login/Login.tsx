@@ -77,7 +77,8 @@ export function Login() {
           data.tokenResponse.access_token,
           whoami.device_id!,
           whoami.user_id,
-          data.homeserverUrl
+          data.homeserverUrl,
+          data.tokenResponse.refresh_token
         );
         navigate(getHomePath(), { replace: true });
       })

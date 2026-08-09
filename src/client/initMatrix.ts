@@ -7,6 +7,7 @@ import { pushSessionToSW } from '../sw-session';
 type Session = {
   baseUrl: string;
   accessToken: string;
+  refreshToken: string | undefined;
   userId: string;
   deviceId: string;
 };
@@ -23,6 +24,7 @@ export const initClient = async (session: Session): Promise<MatrixClient> => {
   const mx = createClient({
     baseUrl: session.baseUrl,
     accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
     userId: session.userId,
     store: indexedDBStore,
     cryptoStore: legacyCryptoStore,

@@ -33,13 +33,19 @@ export function setFallbackSession(
   accessToken: string,
   deviceId: string,
   userId: string,
-  baseUrl: string
+  baseUrl: string,
+  refreshToken?: string
 ) {
   localStorage.setItem('cinny_access_token', accessToken);
   localStorage.setItem('cinny_device_id', deviceId);
   localStorage.setItem('cinny_user_id', userId);
   localStorage.setItem('cinny_hs_base_url', baseUrl);
+
+  if (refreshToken) {
+    localStorage.setItem('cinny_refresh_token', refreshToken);
+  }
 }
+
 export const removeFallbackSession = () => {
   localStorage.removeItem('cinny_hs_base_url');
   localStorage.removeItem('cinny_user_id');
@@ -51,6 +57,7 @@ export const getFallbackSession = (): Session | undefined => {
   const userId = localStorage.getItem('cinny_user_id');
   const deviceId = localStorage.getItem('cinny_device_id');
   const accessToken = localStorage.getItem('cinny_access_token');
+  const refreshToken = localStorage.getItem('cinny_refresh_token') ?? undefined;
 
   if (baseUrl && userId && deviceId && accessToken) {
     const session: Session = {
@@ -58,6 +65,7 @@ export const getFallbackSession = (): Session | undefined => {
       userId,
       deviceId,
       accessToken,
+      refreshToken,
       fallbackSdkStores: true,
     };
 
