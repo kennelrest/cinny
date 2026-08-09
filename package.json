@@ -16,7 +16,6 @@
     "check:prettier": "prettier --check .",
     "fix:prettier": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky install",
     "commit": "git-cz",
     "bump": "node scripts/update-version.js"
   },
