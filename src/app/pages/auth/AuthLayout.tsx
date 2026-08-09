@@ -123,9 +123,9 @@ export function AuthLayout() {
     discoveryState.status === AsyncStatus.Success ? discoveryState.data.response : [];
 
   return (
-    <Scroll variant="Background" visibility="Hover" size="300" hideTrack>
+    <div style={{ width: '100%', height: '100%' }}>
       <Box
-        className={classNames(css.AuthLayout, PatternsCss.BackgroundDotPattern)}
+        className={classNames(css.AuthLayout, PatternsCss.BackgroundKennel)}
         direction="Column"
         alignItems="Center"
         justifyContent="SpaceBetween"
@@ -204,6 +204,6 @@ export function AuthLayout() {
         </Box>
         <AuthFooter />
       </Box>
-    </Scroll>
+    </div>
   );
 }

@@ -9,10 +9,7 @@ type SplashScreenProps = {
 };
 export function SplashScreen({ children }: SplashScreenProps) {
   return (
-    <Box
-      className={classNames(css.SplashScreen, patternsCSS.BackgroundDotPattern)}
-      direction="Column"
-    >
+    <Box className={classNames(css.SplashScreen, patternsCSS.BackgroundKennel)} direction="Column">
       {children}
       <Box
         className={css.SplashScreenFooter}
