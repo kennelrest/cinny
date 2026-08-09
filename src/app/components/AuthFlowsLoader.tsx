@@ -1,5 +1,11 @@
 import { ReactNode, useCallback, useEffect, useMemo } from 'react';
-import { MatrixError, createClient } from 'matrix-js-sdk';
+import {
+  MatrixError,
+  createClient,
+  generateOidcAuthorizationUrl,
+  registerOidcClient,
+} from 'matrix-js-sdk';
+import { secureRandomString } from 'matrix-js-sdk/lib/randomstring';
 import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
 import { useAutoDiscoveryInfo } from '../hooks/useAutoDiscoveryInfo';
 import { promiseFulfilledResult, promiseRejectedResult } from '../utils/common';
@@ -33,7 +39,50 @@ export function AuthFlowsLoader({ fallback, error, children }: AuthFlowsLoaderPr
       }
 
       if (!loginFlows) {
-        throw new Error('Missing auth flow!');
+        const oidcConfig = await mx.getAuthMetadata();
+
+        const redirectUri = window.location.href;
+
+        const clientId = await registerOidcClient(oidcConfig, {
+          clientName: 'Cinny (kennel.rest)',
+          clientUri: window.location.origin,
+          logoUri: 'https://cinny.in/assets/cinny.svg',
+          applicationType: 'web',
+          redirectUris: [redirectUri],
+          tosUri: 'https://kennel.rest',
+          policyUri: 'https://kennel.rest',
+          contacts: ['matrix@kennel.rest'],
+        });
+
+        const nonce = secureRandomString(8);
+
+        const authFlows: AuthFlows = {
+          loginFlows: {
+            flows: [
+              {
+                type: 'm.login.sso',
+                identity_providers: [
+                  {
+                    id:
+                      'oidc-url:' +
+                      (await generateOidcAuthorizationUrl({
+                        clientId,
+                        metadata: oidcConfig,
+                        homeserverUrl: baseUrl,
+                        redirectUri,
+                        nonce,
+                        prompt: 'login',
+                      })),
+                    name: 'OpenID Connect',
+                  },
+                ],
+              },
+            ],
+          },
+          registerFlows: { status: RegisterFlowStatus.RegistrationDisabled },
+        };
+
+        return authFlows;
       }
       if ('errcode' in loginFlows) {
         throw new Error('Failed to load auth flow!');

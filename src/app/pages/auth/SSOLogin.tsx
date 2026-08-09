@@ -14,8 +14,10 @@ export function SSOLogin({ providers, redirectUrl, action, saveScreenSpace }: SS
   const baseUrl = discovery['m.homeserver'].base_url;
   const mx = useMemo(() => createClient({ baseUrl }), [baseUrl]);
 
-  const getSSOIdUrl = (ssoId?: string): string =>
-    mx.getSsoLoginUrl(redirectUrl, 'sso', ssoId, action);
+  const getSSOIdUrl = (ssoId?: string): string => {
+    if (ssoId?.startsWith('oidc-url:')) return ssoId.replace('oidc-url:', '');
+    return mx.getSsoLoginUrl(redirectUrl, 'sso', ssoId, action);
+  };
 
   const withoutIcon = providers
     ? providers.find(

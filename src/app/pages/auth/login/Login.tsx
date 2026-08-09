@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Box, Text, color } from 'folds';
-import { Link, useSearchParams } from 'react-router-dom';
-import { SSOAction } from 'matrix-js-sdk';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { completeAuthorizationCodeGrant, createClient, SSOAction } from 'matrix-js-sdk';
 import { useAuthFlows } from '../../../hooks/useAuthFlows';
 import { useAuthServer } from '../../../hooks/useAuthServer';
 import { useParsedLoginFlows } from '../../../hooks/useParsedLoginFlows';
@@ -9,10 +9,11 @@ import { PasswordLoginForm } from './PasswordLoginForm';
 import { SSOLogin } from '../SSOLogin';
 import { TokenLogin } from './TokenLogin';
 import { OrDivider } from '../OrDivider';
-import { getLoginPath, getRegisterPath, withSearchParam } from '../../pathUtils';
+import { getHomePath, getLoginPath, getRegisterPath, withSearchParam } from '../../pathUtils';
 import { usePathWithOrigin } from '../../../hooks/usePathWithOrigin';
 import { LoginPathSearchParams } from '../../paths';
 import { useClientConfig } from '../../../hooks/useClientConfig';
+import { setFallbackSession } from '../../../state/sessions';
 
 const getLoginTokenSearchParam = () => {
   // when using hasRouter query params in existing route
@@ -22,6 +23,21 @@ const getLoginTokenSearchParam = () => {
   const parmas = new URLSearchParams(window.location.search);
   const loginToken = parmas.get('loginToken');
   return loginToken ?? undefined;
+};
+
+const getOidcCallbackParams = () => {
+  // when using hasRouter query params in existing route
+  // gets ignored by react-router, so we need to read it ourself
+  // we only need to read loginToken as it's the only param that
+  // is provided by external entity. example: SSO login
+  const params = new URLSearchParams(window.location.search);
+
+  if (!params.has('code') || !params.has('state')) return undefined;
+
+  return {
+    code: params.get('code')!,
+    state: params.get('state')!,
+  };
 };
 
 const useLoginSearchParams = (searchParams: URLSearchParams): LoginPathSearchParams =>
@@ -43,6 +59,30 @@ export function Login() {
   const ssoRedirectUrl = usePathWithOrigin(getLoginPath(server));
   const loginTokenForHashRouter = getLoginTokenSearchParam();
   const absoluteLoginPath = usePathWithOrigin(getLoginPath(server));
+  const oidcCallbackParams = getOidcCallbackParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!oidcCallbackParams) {
+      return;
+    }
+    completeAuthorizationCodeGrant(oidcCallbackParams.code, oidcCallbackParams.state)
+      .then(async (data) => {
+        const tempClient = createClient({
+          baseUrl: data.homeserverUrl,
+          accessToken: data.tokenResponse.access_token,
+        });
+        const whoami = await tempClient.whoami();
+        setFallbackSession(
+          data.tokenResponse.access_token,
+          whoami.device_id!,
+          whoami.user_id,
+          data.homeserverUrl
+        );
+        navigate(getHomePath(), { replace: true });
+      })
+      .catch(console.error);
+  }, [oidcCallbackParams]);
 
   if (hashRouter?.enabled && loginTokenForHashRouter) {
     window.location.replace(
