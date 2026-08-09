@@ -78,7 +78,13 @@ export function Login() {
           whoami.device_id!,
           whoami.user_id,
           data.homeserverUrl,
-          data.tokenResponse.refresh_token
+          {
+            refreshToken: data.tokenResponse.refresh_token!,
+            clientId: data.oidcClientSettings.clientId,
+            issuer: data.oidcClientSettings.issuer,
+            redirectUri: window.location.href,
+            idTokenClaims: data.idTokenClaims,
+          }
         );
         navigate(getHomePath(), { replace: true });
       })

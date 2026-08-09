@@ -4,6 +4,15 @@
 //   getLocalStorageItem,
 //   setLocalStorageItem,
 // } from './utils/atomWithLocalStorage';
+import { type IdTokenClaims } from 'oidc-client-ts';
+
+export type OidcInfo = {
+  refreshToken: string;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  idTokenClaims: IdTokenClaims;
+};
 
 export type Session = {
   baseUrl: string;
@@ -11,8 +20,8 @@ export type Session = {
   deviceId: string;
   accessToken: string;
   expiresInMs?: number;
-  refreshToken?: string;
   fallbackSdkStores?: boolean;
+  oidcInfo?: OidcInfo;
 };
 
 export type Sessions = Session[];
@@ -34,15 +43,15 @@ export function setFallbackSession(
   deviceId: string,
   userId: string,
   baseUrl: string,
-  refreshToken?: string
+  oidcInfo?: OidcInfo
 ) {
   localStorage.setItem('cinny_access_token', accessToken);
   localStorage.setItem('cinny_device_id', deviceId);
   localStorage.setItem('cinny_user_id', userId);
   localStorage.setItem('cinny_hs_base_url', baseUrl);
 
-  if (refreshToken) {
-    localStorage.setItem('cinny_refresh_token', refreshToken);
+  if (oidcInfo) {
+    localStorage.setItem('cinny_oidc', JSON.stringify(oidcInfo));
   }
 }
 
@@ -57,7 +66,7 @@ export const getFallbackSession = (): Session | undefined => {
   const userId = localStorage.getItem('cinny_user_id');
   const deviceId = localStorage.getItem('cinny_device_id');
   const accessToken = localStorage.getItem('cinny_access_token');
-  const refreshToken = localStorage.getItem('cinny_refresh_token') ?? undefined;
+  const oidcInfo = localStorage.getItem('cinny_oidc') ?? undefined;
 
   if (baseUrl && userId && deviceId && accessToken) {
     const session: Session = {
@@ -65,7 +74,7 @@ export const getFallbackSession = (): Session | undefined => {
       userId,
       deviceId,
       accessToken,
-      refreshToken,
+      oidcInfo: oidcInfo ? (JSON.parse(oidcInfo) as OidcInfo) : undefined,
       fallbackSdkStores: true,
     };
 

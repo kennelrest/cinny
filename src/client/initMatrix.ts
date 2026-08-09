@@ -1,16 +1,40 @@
-import { createClient, MatrixClient, IndexedDBStore, IndexedDBCryptoStore } from 'matrix-js-sdk';
-
+import {
+  createClient,
+  MatrixClient,
+  IndexedDBStore,
+  IndexedDBCryptoStore,
+  OidcTokenRefresher,
+  TokenRefreshFunction,
+} from 'matrix-js-sdk';
 import { cryptoCallbacks } from './secretStorageKeys';
 import { clearNavToActivePathStore } from '../app/state/navToActivePath';
 import { pushSessionToSW } from '../sw-session';
+import { getFallbackSession, type OidcInfo } from '../app/state/sessions';
 
 type Session = {
   baseUrl: string;
   accessToken: string;
-  refreshToken: string | undefined;
   userId: string;
   deviceId: string;
+
+  oidcInfo?: OidcInfo;
 };
+
+class CinnyOidcTokenRefresher extends OidcTokenRefresher {
+  protected async persistTokens(tokens: {
+    accessToken: string;
+    refreshToken?: string;
+  }): Promise<void> {
+    localStorage.setItem('cinny_access_token', tokens.accessToken);
+    if (tokens.refreshToken) {
+      const session = getFallbackSession();
+      if (!session?.oidcInfo) return;
+
+      session.oidcInfo.refreshToken = tokens.refreshToken;
+      localStorage.setItem('cinny_oidc', JSON.stringify(session.oidcInfo));
+    }
+  }
+}
 
 export const initClient = async (session: Session): Promise<MatrixClient> => {
   const indexedDBStore = new IndexedDBStore({
@@ -21,10 +45,23 @@ export const initClient = async (session: Session): Promise<MatrixClient> => {
 
   const legacyCryptoStore = new IndexedDBCryptoStore(global.indexedDB, 'crypto-store');
 
+  let tokenRefreshFunction: TokenRefreshFunction | undefined = undefined;
+  if (session.oidcInfo) {
+    const tokenRefresher = new CinnyOidcTokenRefresher(
+      session.oidcInfo.issuer,
+      session.oidcInfo.clientId,
+      session.oidcInfo.redirectUri,
+      session.deviceId,
+      session.oidcInfo.idTokenClaims
+    );
+
+    tokenRefreshFunction = tokenRefresher.doRefreshAccessToken.bind(tokenRefresher);
+  }
+
   const mx = createClient({
     baseUrl: session.baseUrl,
     accessToken: session.accessToken,
-    refreshToken: session.refreshToken,
+    refreshToken: session.oidcInfo?.refreshToken,
     userId: session.userId,
     store: indexedDBStore,
     cryptoStore: legacyCryptoStore,
@@ -32,6 +69,7 @@ export const initClient = async (session: Session): Promise<MatrixClient> => {
     timelineSupport: true,
     cryptoCallbacks: cryptoCallbacks as any,
     verificationMethods: ['m.sas.v1'],
+    tokenRefreshFunction,
   });
 
   await indexedDBStore.startup();
